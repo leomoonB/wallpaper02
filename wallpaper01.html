@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Beautiful Live Wallpaper</title>
+
+  <!-- โหลดฟอนต์จาก Google -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Kanit:wght@300;400;600&family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* เปลี่ยนฟอนต์นาฬิกาที่นี่: orbitron | kanit | prompt */
+      --clock-font: "Orbitron", system-ui, sans-serif;
+      --clock-size: 72px;
+      --clock-weight: 700;
+      --clock-tracking: 0.08em;  /* letter-spacing */
+      --clock-glow1: #0ff;
+      --clock-glow2: #08f;
+      --clock-color: #ccffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body{
+      width: 100vw; height: 100vh; overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Kanit", sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      background-size: 600% 600%;
+      animation: gradientShift 20s ease infinite;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    canvas{ position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+
+    .clock-wrap{
+      position: absolute; right: 60px; bottom: 40px; z-index: 2;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+      user-select: none; -webkit-user-select: none;
+      filter: drop-shadow(0 0 8px rgba(0,255,255,.25));
+    }
+    .clock{
+      font-family: var(--clock-font);
+      font-size: clamp(36px, 6vw, var(--clock-size));
+      font-weight: var(--clock-weight);
+      letter-spacing: var(--clock-tracking);
+      color: var(--clock-color);
+      text-shadow:
+        0 0 12px var(--clock-glow1),
+        0 0 28px var(--clock-glow2);
+      line-height: 1;
+    }
+    .date{
+      font-family: "Kanit", system-ui, sans-serif;
+      font-size: clamp(14px, 2vw, 22px);
+      color: #e6ffff;
+      opacity: .9;
+      text-shadow: 0 0 10px rgba(0,255,255,.35);
+    }
+
+    /* ปุ่มสลับฟอนต์เล็กๆ (ถ้าไม่อยากได้ ลบส่วนนี้ออกได้) */
+    .controls{
+      position: absolute; left: 24px; bottom: 24px; z-index: 3;
+      display: flex; gap: 8px; flex-wrap: wrap;
+      font-family: "Kanit", system-ui, sans-serif;
+    }
+    .btn{
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      padding: 8px 12px; border-radius: 14px; cursor: pointer;
+      backdrop-filter: blur(6px);
+      color: #eaffff; font-size: 14px;
+    }
+    .btn:hover{ background: rgba(255,255,255,.14); }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+
+  <div class="clock-wrap">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="date" id="date">Mon, 01 Jan 2025</div>
+  </div>
+
+  <div class="controls">
+    <div class="btn" data-font="Orbitron">Orbitron</div>
+    <div class="btn" data-font="Kanit">Kanit</div>
+    <div class="btn" data-font="Prompt">Prompt</div>
+  </div>
+
+  <script>
+    // ==== นาฬิกา + วันที่ (ไทย) ====
+    const clockEl = document.getElementById("clock");
+    const dateEl  = document.getElementById("date");
+
+    const thMonths = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+    const thDays   = ["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."];
+
+    function updateClock(){
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,"0");
+      const mm = String(now.getMinutes()).padStart(2,"0");
+      const ss = String(now.getSeconds()).padStart(2,"0");
+      clockEl.textContent = `${hh}:${mm}:${ss}`;
+
+      const d  = now.getDate();
+      const mo = thMonths[now.getMonth()];
+      const y  = now.getFullYear() + 543; // ปีพ.ศ.
+      const wd = thDays[now.getDay()];
+      dateEl.textContent = `${wd} ${d} ${mo} ${y}`;
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    // ==== สลับฟอนต์คลิกเดียว ====
+    document.querySelectorAll(".btn").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        document.documentElement.style.setProperty("--clock-font", `"${b.dataset.font}", system-ui, sans-serif`);
+      });
+    });
+
+    // ==== Particles (เหมือนตัวอย่างเดิม) ====
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    addEventListener("resize", resize); resize();
+
+    class Particle{
+      constructor(){
+        this.reset(true);
+      }
+      reset(randomXY=false){
+        this.x = randomXY ? Math.random()*canvas.width  : (Math.random()<.5?0:canvas.width);
+        this.y = randomXY ? Math.random()*canvas.height : Math.random()*canvas.height;
+        this.r = Math.random()*2+1;
+        this.dx = (Math.random()-.5)*0.7;
+        this.dy = (Math.random()-.5)*0.7;
+        this.alpha = Math.random()*0.6+0.2;
+      }
+      update(){
+        this.x += this.dx; this.y += this.dy;
+        if(this.x<-50 || this.x>canvas.width+50 || this.y<-50 || this.y>canvas.height+50) this.reset();
+        this.draw();
+      }
+      draw(){
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(0,255,255,${this.alpha})`;
+        ctx.fill();
+      }
+    }
+    function init(){ particles = []; for(let i=0;i<120;i++) particles.push(new Particle()); }
+    function animate(){ requestAnimationFrame(animate); ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p=>p.update()); }
+    init(); animate();
+  </script>
+</body>
+</html>
